@@ -42,7 +42,7 @@ MiMo is Xiaomi's AI platform with competitive pricing.
 
 ### Option C: OpenRouter (Multi-Model — Most Flexible)
 
-OpenRouter gives you one API key that accesses dozens of models (DeepSeek, Claude, Gemini, GPT, etc.).
+OpenRouter gives you one API key that accesses dozens of models (DeepSeek, Claude, Gemini, GPT, etc.). Also has free models for memory tasks.
 
 1. Go to https://openrouter.ai
 2. Sign up (Google/GitHub login works)
@@ -54,7 +54,7 @@ OpenRouter gives you one API key that accesses dozens of models (DeepSeek, Claud
 
 ---
 
-**Keep your API key handy — you'll need it in Part 3.**
+**Keep your API key handy — you'll need it in Parts 3 and 4.**
 
 ---
 
@@ -187,19 +187,177 @@ This will show you the available memory providers and walk you through configura
 
 ### If you chose OpenViking
 
-The wizard will ask for the server endpoint. You need to install and start OpenViking first:
+You need to install and start the OpenViking server first. It uses your existing API key for embedding and vision — no extra accounts needed.
 
+**Install OpenViking:**
 ```bash
 pip3 install openviking --upgrade
-openviking-server init    # interactive wizard sets up Ollama + models
-openviking-server         # start the server (leave running)
 ```
 
-Then run `hermes memory setup` again and select OpenViking. It will auto-detect the server at `localhost:1933`.
+**Create the config file:**
+```bash
+mkdir -p ~/.openviking
+```
+
+Then create `~/.openviking/ov.conf` with your API key. If you're using **OpenRouter** (any key type works):
+
+```bash
+cat > ~/.openviking/ov.conf << 'EOF'
+{
+  "default_account": "default",
+  "default_user": "you",
+  "default_agent": "hermes",
+  "storage": {
+    "workspace": "~/.openviking/data",
+    "agfs": { "backend": "local" },
+    "vectordb": { "backend": "local", "dimension": 1536 }
+  },
+  "embedding": {
+    "dense": {
+      "provider": "openai",
+      "model": "openai/text-embedding-3-small",
+      "api_key": "YOUR_API_KEY_HERE",
+      "api_base": "https://openrouter.ai/api/v1",
+      "dimension": 1536
+    }
+  },
+  "vlm": {
+    "provider": "openai",
+    "model": "google/gemini-2.0-flash-001:free",
+    "api_key": "YOUR_API_KEY_HERE",
+    "api_base": "https://openrouter.ai/api/v1",
+    "max_tokens": 4096
+  }
+}
+EOF
+```
+
+If you're using **DeepSeek directly** (not OpenRouter), the embedding call needs an OpenAI-compatible endpoint. You'll need to add an OpenRouter key just for embedding (free tier works), or use `deepseek/deepseek-v4-flash` as the VLM with DeepSeek's API:
+
+```bash
+cat > ~/.openviking/ov.conf << 'EOF'
+{
+  "default_account": "default",
+  "default_user": "you",
+  "default_agent": "hermes",
+  "storage": {
+    "workspace": "~/.openviking/data",
+    "agfs": { "backend": "local" },
+    "vectordb": { "backend": "local", "dimension": 1536 }
+  },
+  "embedding": {
+    "dense": {
+      "provider": "openai",
+      "model": "openai/text-embedding-3-small",
+      "api_key": "YOUR_DEEPSEEK_KEY",
+      "api_base": "https://api.deepseek.com/v1",
+      "dimension": 1536
+    }
+  },
+  "vlm": {
+    "provider": "openai",
+    "model": "deepseek/deepseek-v4-flash",
+    "api_key": "YOUR_DEEPSEEK_KEY",
+    "api_base": "https://api.deepseek.com/v1",
+    "max_tokens": 4096
+  }
+}
+EOF
+```
+
+Replace `YOUR_API_KEY_HERE` or `YOUR_DEEPSEEK_KEY` with your actual key.
+
+**Replace `you` in `"default_user"` with your actual name.**
+
+**Start the server:**
+```bash
+openviking-server
+```
+
+Leave this running in a separate terminal tab, or run it in the background:
+```bash
+nohup openviking-server > /dev/null 2>&1 &
+```
+
+**Verify it's running:**
+```bash
+curl http://localhost:1933/health
+```
+
+Should return `{"status":"ok"}`.
+
+**Then connect Hermes:**
+```bash
+hermes config set memory.provider openviking
+echo 'OPENVIKING_ENDPOINT=http://localhost:1933' >> ~/.hermes/.env
+```
+
+Verify:
+```bash
+hermes memory status
+```
+
+Should show OpenViking as active.
+
+---
 
 ### If you chose Honcho
 
-You need Docker and Honcho running first. See the **Honcho Setup (Advanced)** section below, then run `hermes memory setup` and select Honcho.
+You need Docker and Honcho running first. It uses your existing API key for the LLM calls.
+
+**Install Docker Desktop:**
+
+1. Download Docker Desktop for Mac: https://www.docker.com/products/docker-desktop/
+2. Open the `.dmg` file and drag Docker to Applications
+3. Launch Docker Desktop from Applications
+4. Follow the setup prompts (grant the permissions it asks for)
+
+Verify Docker is running:
+```bash
+docker --version
+docker compose version
+```
+
+**Clone and start Honcho:**
+```bash
+cd ~
+git clone https://github.com/plastic-labs/honcho.git
+cd honcho
+cp docker-compose.yml.example docker-compose.yml
+cp .env.template .env
+```
+
+Edit `.env` — set your API key for the LLM. Use a free model to keep costs at zero:
+```
+LLM_OPENAI_API_KEY=your-o...Then update the model configs to use a free model through OpenRouter (or DeepSeek directly):
+```
+DERIVER_MODEL_CONFIG__TRANSPORT=openai
+DERIVER_MODEL_CONFIG__MODEL=deepseek/deepseek-v4-flash:free
+DERIVER_MODEL_CONFIG__OVERRIDES__BASE_URL=https://openrouter.ai/api/v1
+```
+
+Repeat for all `MODEL_CONFIG` sections (DIALECTIC_LEVELS, SUMMARY_MODEL_CONFIG, DREAM_*_MODEL_CONFIG, EMBEDDING_MODEL_CONFIG).
+
+Start it:
+```bash
+docker compose up -d --build
+```
+
+Verify:
+```bash
+curl http://localhost:8000/health
+```
+
+Should return `{"status":"ok"}`.
+
+**Then connect Hermes:**
+```bash
+hermes memory setup
+```
+
+Select Honcho in the wizard.
+
+---
 
 ### If you chose Built-in (no extra setup)
 
@@ -286,49 +444,6 @@ Opens at http://localhost:8787.
 
 ---
 
-## Honcho Setup (Advanced)
-
-Only needed if you chose Honcho as your memory provider. Requires Docker.
-
-### Install Docker Desktop
-
-1. Download Docker Desktop for Mac: https://www.docker.com/products/docker-desktop/
-2. Open the `.dmg` file and drag Docker to Applications
-3. Launch Docker Desktop from Applications
-4. Follow the setup prompts (grant the permissions it asks for)
-
-Verify Docker is running:
-```bash
-docker --version
-docker compose version
-```
-
-### Start Honcho
-
-```bash
-cd ~
-git clone https://github.com/plastic-labs/honcho.git
-cd honcho
-cp docker-compose.yml.example docker-compose.yml
-cp .env.template .env
-```
-
-Edit `.env` — set your API key for the LLM:
-```
-LLM_OPENAI_API_KEY=your-o...Then start:
-```bash
-docker compose up -d --build
-```
-
-Verify:
-```bash
-curl http://localhost:8000/health
-```
-
-Should return `{"status":"ok"}`. Then run `hermes memory setup` and select Honcho.
-
----
-
 ## Quick Reference
 
 | Command | What it does |
@@ -365,7 +480,8 @@ Should return `{"status":"ok"}`. Then run `hermes memory setup` and select Honch
 
 **OpenViking won't start**
 - Check if port 1933 is in use: `lsof -i :1933`
-- Make sure Ollama is running: `ollama list`
+- Verify your API key in `~/.openviking/ov.conf` is correct
+- Check the health endpoint: `curl http://localhost:1933/health`
 
 **Model not responding**
 - Check your API key: `hermes doctor`
