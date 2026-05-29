@@ -51,6 +51,7 @@ Both guides cover the same setup — pick the one that matches your machine.
 | [**Third-Party WebUI**](https://github.com/nesquena/hermes-webui) | Browser-based chat interface (7k+ stars) |
 | [**OpenViking**](https://github.com/volcengine/OpenViking) | Self-hosted context database for AI agents (23k+ stars) |
 | [**Honcho**](https://github.com/plastic-labs/honcho) | Self-hosted memory with AI-powered extraction |
+| [**Hermes Ecosystem**](https://github.com/ksimback/hermes-ecosystem) | Curated list of tools, integrations, and platforms in the Hermes ecosystem |
 | [**OpenRouter**](https://openrouter.ai) | Multi-model API gateway — one key for 200+ models |
 | [**DeepSeek**](https://platform.deepseek.com) | Cheapest high-quality models for daily use |
 
